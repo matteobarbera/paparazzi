@@ -1,0 +1,50 @@
+<!DOCTYPE module SYSTEM "module.dtd">
+
+<module name="imu_icm206xx_spi" dir="imu">
+  <doc>
+    <description>
+      IMU with ICM206XX via SPI.
+    </description>
+    <configure name="IMU_ICM206XX_SPI_DEV" value="spi1" description="SPI device to use"/>
+    <configure name="IMU_ICM206XX_SPI_SLAVE_IDX" value="SPI_SLAVEx" description="SPI slave select pin to use"/>
+    <define name="IMU_ICM206XX_GYRO_LOWPASS_FILTER" value="ICM206XX_DLPF_GYRO_250HZ" description="gyro DigitalLowPassFilter setting of the MPU"/>
+    <define name="IMU_ICM206XX_ACCEL_LOWPASS_FILTER" value="ICM206XX_DLPF_ACCEL_184HZ" description="accelerometer DigitalLowPassFilter setting of the MPU"/>
+    <define name="IMU_ICM206XX_SMPLRT_DIV" value="3" description="sample rate divider setting of the MPU"/>
+    <define name="IMU_ICM206XX_GYRO_RANGE" value="ICM206XX_GYRO_RANGE_1000" description="gyroscope range setting of the MPU"/>
+    <define name="IMU_ICM206XX_ACCEL_RANGE" value="ICM206XX_ACCEL_RANGE_8G" description="accelerometer range setting of the MPU"/>
+
+    <define name="IMU_ICM206XX_CHAN_X" value="0" description="channel index"/>
+    <define name="IMU_ICM206XX_CHAN_Y" value="1" description="channel index"/>
+    <define name="IMU_ICM206XX_CHAN_Z" value="2" description="channel index"/>
+    <define name="IMU_ICM206XX_X_SIGN" value="1" description="axis sign"/>
+    <define name="IMU_ICM206XX_Y_SIGN" value="1" description="axis sign"/>
+    <define name="IMU_ICM206XX_Z_SIGN" value="1" description="axis sign"/>
+  </doc>
+  <autoload name="imu_common"/>
+  <autoload name="imu_nps"/>
+  <header>
+    <file name="imu_icm206xx_spi.h"/>
+  </header>
+
+  <init fun="imu_icm206xx_init()"/>
+  <periodic fun="imu_icm206xx_periodic()"/>
+  <event fun="imu_icm206xx_event()"/>
+
+  <makefile target="!sim|nps|fbw">
+    <configure name="IMU_ICM206XX_SPI_DEV" case="lower|upper"/>
+
+    <define name="IMU_ICM206XX_SPI_DEV" value="$(IMU_ICM206XX_SPI_DEV_LOWER)"/>
+    <define name="USE_$(IMU_ICM206XX_SPI_DEV_UPPER)"/>
+    <define name="IMU_ICM206XX_SPI_SLAVE_IDX" value="$(IMU_ICM206XX_SPI_SLAVE_IDX)"/>
+    <define name="USE_$(IMU_ICM206XX_SPI_SLAVE_IDX)"/>
+
+    <define name="IMU_TYPE_H" value="imu/imu_icm206xx_spi.h" type="string"/>
+
+    <file name="icm206xx.c" dir="peripherals"/>
+    <file name="icm206xx_spi.c" dir="peripherals"/>
+    <file name="imu_icm206xx_spi.c"/>
+    <raw>
+      include $(CFG_SHARED)/spi_master.makefile
+    </raw>
+  </makefile>
+</module>
