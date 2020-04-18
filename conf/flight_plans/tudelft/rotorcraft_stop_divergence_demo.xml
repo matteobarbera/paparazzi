@@ -2,10 +2,10 @@
 
 <flight_plan alt="1.5" ground_alt="0" lat0="51.990634" lon0="4.376789" max_dist_from_home="20" name="Rotorcraft Cyberzoo (Delft) no GPS" security_height="0.3">
   <header>
-#include "autopilot.h"
-#include "modules/divergence_stop/divergence_stop.h"
-
-</header>
+    #include "autopilot.h"
+    #include "modules/divergence_stop/divergence_stop.h"
+    #define NPS_GAZEBO_WORLD "cyberzoo_orange_poles.world"
+  </header>
   <waypoints>
     <waypoint name="HOME" x="0.0" y="0.0"/>
     <waypoint name="CLIMB" x="1.2" y="-0.6"/>
@@ -29,10 +29,10 @@
       <corner name="FA1"/>
     </sector>
   </sectors>
-  <exceptions>
-    <!-- RC lost -->
-    <exception cond="(navigation_state == DIVERGENCE_MODE_STOP)"  deroute="back"/>
-  </exceptions>
+<!--  <exceptions>-->
+<!--    &lt;!&ndash; RC lost &ndash;&gt;-->
+<!--    <exception cond="(navigation_state == DIVERGENCE_MODE_STOP)"  deroute="back"/>-->
+<!--  </exceptions>-->
   <blocks>
     <block name="Holding point">
       <call_once fun="NavKillThrottle()"/>

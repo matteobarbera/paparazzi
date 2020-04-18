@@ -5,21 +5,24 @@
     Airframe file to fly a Bebop1 drone, without stabilization, to demonstrate divergence. If the divergence measured from the front camera goes over a threshold, the drone will stop. As this airframe does not use a magnetometer nor GPS for heading determination, all positions and angles are relative to its starting position. Therefore; the drone should be facing north when started. The values are tuned so that the flight speed is limited and the drone does not over-shoot the waypoints as it would in outdoor settings.
   </description>
   <firmware name="rotorcraft">
-    <target name="ap" board="bebop"/>
+    <target name="ap" board="bebop">
       <define name="USE_SONAR"/>
-    <!--target name="nps" board="pc">
-      <module name="fdm" type="jsbsim"/>
-      <module name="udp"/>
-    </target-->
+    </target>
+    <target name="nps" board="pc">
+      <module name="fdm" type="gazebo"/>
+      <define name="VIDEO_CAPTURE_PATH" value="/tmp/paparazzi/images"/>
+      <define name="FILE_LOGGER_PATH" value="/tmp/paparazzi/log"/>
+    </target>
 
     <!-- Subsystem section -->
     <module name="telemetry" type="transparent_udp"/>
     <module name="radio_control" type="datalink"/>
+    <module name="motor_mixing"/>
     <module name="actuators" type="bebop"/>
     <module name="imu" type="bebop"/>
-    <module name="stabilization" type="indi">
-      <define name="INDI_RPM_FEEDBACK" value="TRUE"/>
-    </module>
+    <module name="stabilization" type="indi_simple"/>
+<!--      <define name="INDI_RPM_FEEDBACK" value="TRUE"/>-->
+<!--    </module>-->
     <module name="ahrs" type="int_cmpl_quat">
       <configure name="USE_MAGNETOMETER" value="FALSE"/>
     </module>
@@ -68,11 +71,26 @@
     <servo name="BOTTOM_LEFT" no="3" min="1000" neutral="1000" max="9800"/>
   </servos>
 
+<!--  <command_laws>-->
+<!--    <set servo="TOP_LEFT"     value="autopilot_get_motors_on() ? actuators_pprz[0] : -MAX_PPRZ"/>-->
+<!--    <set servo="TOP_RIGHT"    value="autopilot_get_motors_on() ? actuators_pprz[1] : -MAX_PPRZ"/>-->
+<!--    <set servo="BOTTOM_RIGHT" value="autopilot_get_motors_on() ? actuators_pprz[2] : -MAX_PPRZ"/>-->
+<!--    <set servo="BOTTOM_LEFT"  value="autopilot_get_motors_on() ? actuators_pprz[3] : -MAX_PPRZ"/>-->
+<!--  </command_laws>-->
+
+  <section name="MIXING" prefix="MOTOR_MIXING_">
+    <define name="TRIM_ROLL" value="0"/>
+    <define name="TRIM_PITCH" value="0"/>
+    <define name="TRIM_YAW" value="0"/>
+    <define name="TYPE" value="QUAD_X"/>
+  </section>
+
   <command_laws>
-    <set servo="TOP_LEFT"     value="autopilot_get_motors_on() ? actuators_pprz[0] : -MAX_PPRZ"/>
-    <set servo="TOP_RIGHT"    value="autopilot_get_motors_on() ? actuators_pprz[1] : -MAX_PPRZ"/>
-    <set servo="BOTTOM_RIGHT" value="autopilot_get_motors_on() ? actuators_pprz[2] : -MAX_PPRZ"/>
-    <set servo="BOTTOM_LEFT"  value="autopilot_get_motors_on() ? actuators_pprz[3] : -MAX_PPRZ"/>
+    <call fun="motor_mixing_run(autopilot_get_motors_on(),FALSE,values)"/>
+    <set servo="TOP_LEFT" value="motor_mixing.commands[MOTOR_FRONT_LEFT]"/>
+    <set servo="TOP_RIGHT" value="motor_mixing.commands[MOTOR_FRONT_RIGHT]"/>
+    <set servo="BOTTOM_RIGHT" value="motor_mixing.commands[MOTOR_BACK_RIGHT]"/>
+    <set servo="BOTTOM_LEFT" value="motor_mixing.commands[MOTOR_BACK_LEFT]"/>
   </command_laws>
 
   <section name="IMU" prefix="IMU_">
@@ -114,35 +132,66 @@
     <define name="REF_MAX_RDOT" value="RadOfDeg(8000.)"/>
   </section>
 
+<!--  <section name="STABILIZATION_ATTITUDE_INDI" prefix="STABILIZATION_INDI_">-->
+<!--    &lt;!&ndash; Control effectiveness, have been determined by flying test flights with adaptive turned on./&ndash;&gt;-->
+<!--    <define name="G1_ROLL" value="{11.0, -11.0, -11.0 , 11.0 }"/>-->
+<!--    <define name="G1_PITCH" value="{8.5 , 8.5, -8.5 , -8.5}"/>-->
+<!--    <define name="G1_YAW" value="{-0.50, 0.50, -0.50, 0.50}"/>-->
+<!--    <define name="G1_THRUST" value="{-.40, -.40, -.40, -.40}"/>-->
+<!--    &lt;!&ndash;Counter torque effect of spinning up a rotor&ndash;&gt;-->
+<!--    <define name="G2" value="{-48.0,   48.0,  -48.0,   48.0}"/>-->
+
+<!--    &lt;!&ndash; reference acceleration for attitude control &ndash;&gt;-->
+<!--    <define name="REF_ERR_P" value="400.0"/>-->
+<!--    <define name="REF_ERR_Q" value="400.0"/>-->
+<!--    <define name="REF_ERR_R" value="400.0"/>-->
+<!--    <define name="REF_RATE_P" value="20.0"/>-->
+<!--    <define name="REF_RATE_Q" value="20.0"/>-->
+<!--    <define name="REF_RATE_R" value="20.0"/>-->
+
+<!--    <define name="ESTIMATION_FILT_CUTOFF" value="4.0"/>-->
+<!--    <define name="FILT_CUTOFF" value="5.0"/>-->
+
+<!--    &lt;!&ndash; first order actuator dynamics &ndash;&gt;-->
+<!--    <define name="ACT_DYN" value="{0.1, 0.1, 0.1, 0.1}"/>-->
+
+<!--    &lt;!&ndash; Adaptive Learning Rate &ndash;&gt;-->
+<!--    <define name="USE_ADAPTIVE" value="FALSE"/>-->
+<!--    <define name="ADAPTIVE_MU" value="0.00001"/>-->
+
+<!--    &lt;!&ndash;Priority for each axis (roll, pitch, yaw and thrust)&ndash;&gt;-->
+<!--    <define name="WLS_PRIORITIES" value="{1000, 1000, 1, 100}"/>-->
+<!--  </section>-->
   <section name="STABILIZATION_ATTITUDE_INDI" prefix="STABILIZATION_INDI_">
-    <!-- Control effectiveness, have been determined by flying test flights with adaptive turned on./-->
-    <define name="G1_ROLL" value="{11.0, -11.0, -11.0 , 11.0 }"/>
-    <define name="G1_PITCH" value="{8.5 , 8.5, -8.5 , -8.5}"/>
-    <define name="G1_YAW" value="{-0.50, 0.50, -0.50, 0.50}"/>
-    <define name="G1_THRUST" value="{-.40, -.40, -.40, -.40}"/>
-    <!--Counter torque effect of spinning up a rotor-->
-    <define name="G2" value="{-48.0,   48.0,  -48.0,   48.0}"/>
+    <!-- control effectiveness -->
+    <define name="G1_P" value="0.0397"/>
+    <define name="G1_Q" value="0.0299"/>
+    <define name="G1_R" value="0.0014"/>
+    <define name="G2_R" value="0.1219"/>
 
     <!-- reference acceleration for attitude control -->
-    <define name="REF_ERR_P" value="400.0"/>
-    <define name="REF_ERR_Q" value="400.0"/>
-    <define name="REF_ERR_R" value="400.0"/>
-    <define name="REF_RATE_P" value="20.0"/>
-    <define name="REF_RATE_Q" value="20.0"/>
-    <define name="REF_RATE_R" value="20.0"/>
+    <define name="REF_ERR_P" value="600.0"/>
+    <define name="REF_ERR_Q" value="600.0"/>
+    <define name="REF_ERR_R" value="600.0"/>
+    <define name="REF_RATE_P" value="28.0"/>
+    <define name="REF_RATE_Q" value="28.0"/>
+    <define name="REF_RATE_R" value="28.0"/>
 
-    <define name="ESTIMATION_FILT_CUTOFF" value="4.0"/>
-    <define name="FILT_CUTOFF" value="5.0"/>
+    <!--Maxium yaw rate, to avoid instability-->
+    <define name="MAX_R" value="120.0" unit="deg/s"/>
+
+    <!-- second order filter parameters -->
+    <define name="FILT_CUTOFF" value="8.0"/>
+    <define name="ESTIMATION_FILT_CUTOFF" value="8.0"/>
 
     <!-- first order actuator dynamics -->
-    <define name="ACT_DYN" value="{0.1, 0.1, 0.1, 0.1}"/>
+    <define name="ACT_DYN_P" value="0.1"/>
+    <define name="ACT_DYN_Q" value="0.1"/>
+    <define name="ACT_DYN_R" value="0.1"/>
 
     <!-- Adaptive Learning Rate -->
     <define name="USE_ADAPTIVE" value="FALSE"/>
-    <define name="ADAPTIVE_MU" value="0.00001"/>
-
-    <!--Priority for each axis (roll, pitch, yaw and thrust)-->
-    <define name="WLS_PRIORITIES" value="{1000, 1000, 1, 100}"/>
+    <define name="ADAPTIVE_MU" value="0.0001"/>
   </section>
 
   <section name="GUIDANCE_V" prefix="GUIDANCE_V_">
@@ -175,17 +224,19 @@
 
   <section name="SIMULATOR" prefix="NPS_">
     <define name="ACTUATOR_NAMES" value="nw_motor, ne_motor, se_motor, sw_motor" type="string[]"/>
-    <define name="JSBSIM_MODEL" value="simple_x_quad_ccw" type="string"/>
+    <define name="JSBSIM_MODEL" value="bebop" type="string"/>
     <define name="SENSORS_PARAMS" value="nps_sensors_params_default.h" type="string"/>
+    <define name="MT9F002_SENSOR_RES_DIVIDER" value="4"/>
   </section>
   <include href="conf/simulator/gazebo/airframes/bebop.xml"/>
 
   <section name="AUTOPILOT">
     <define name="NO_GPS_NEEDED_FOR_NAV" value="TRUE"/> <!-- needed to be able to fly the drone in NAV mode without a GPS fix -->
-    <define name="MODE_STARTUP" value="AP_MODE_NAV"/>
+    <define name="MODE_STARTUP" value="AP_MODE_ATTITUDE_DIRECT"/>
     <define name="MODE_MANUAL" value="AP_MODE_ATTITUDE_DIRECT"/>
-    <define name="MODE_AUTO1" value="AP_MODE_ATTITUDE_Z_HOLD"/>
-    <define name="MODE_AUTO2" value="AP_MODE_NAV"/>
+    <define name="MODE_AUTO2" value="AP_MODE_ATTITUDE_Z_HOLD"/>
+<!--    <define name="MODE_AUTO1" value="AP_MODE_HOVER_Z_HOLD"/>-->
+<!--    <define name="MODE_AUTO2" value="AP_MODE_NAV"/>-->
   </section>
 
   <section name="BAT">

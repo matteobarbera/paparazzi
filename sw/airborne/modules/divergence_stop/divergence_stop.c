@@ -3,6 +3,7 @@
 #include "generated/airframe.h"
 #include "state.h"
 #include "subsystems/abi.h"
+#include "autopilot_static.h"
 #include <stdio.h>
 #include <time.h>
 
@@ -40,14 +41,18 @@ void divergence_stop_init(void)
 void divergence_stop_periodic(void)
 {
   if (size_divergence > divergence_stop_threshold) {
-	  navigation_state = DIVERGENCE_MODE_STOP;
-  } else {
-	  navigation_state = DIVERGENCE_MODE_FORWARD;
+//	  navigation_state = DIVERGENCE_MODE_STOP;
+      PRINT("THRESHOLD EXCEEDED: New Mode\n");
+      autopilot_static_set_mode(AP_MODE_ATTITUDE_Z_HOLD);
   }
-  if (navigation_state == DIVERGENCE_MODE_STOP) {
-	  // guidance_h_set_guided_body_vel(0, 0);
-	  PRINT("THRESHOLD EXCEEDED\n");
-  } //else {
+//  else {
+//	  navigation_state = DIVERGENCE_MODE_FORWARD;
+//  }
+//  if (navigation_state == DIVERGENCE_MODE_STOP) {
+//	  // guidance_h_set_guided_body_vel(0, 0);
+//	  PRINT("THRESHOLD EXCEEDED: New Mode\n");
+//	  autopilot_static_set_mode(AP_MODE_CARE_FREE_DIRECT);
+//  } //else {
 	  // guidance_h_set_guided_body_vel(1.0, 0);
   //}
   PRINT("%f\n", size_divergence);
