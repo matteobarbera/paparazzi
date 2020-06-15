@@ -7,8 +7,11 @@
 #include "firmwares/rotorcraft/navigation.h"
 #include "state.h"
 #include "autopilot_static.h"
+#include <stdio.h>
 
 #include "generated/flight_plan.h"
+
+#define PRINT(string,...) fprintf(stderr, "[mav_exercise->%s()] " string,__FUNCTION__ , ##__VA_ARGS__)
 
 uint8_t moveWaypointForward(uint8_t waypoint, float distanceMeters);
 uint8_t moveWaypoint(uint8_t waypoint, struct EnuCoor_i *new_coor);
@@ -55,6 +58,8 @@ void mav_exercise_periodic(void)
     // front_camera defined in airframe xml, with the video_capture module
     int32_t color_count_threshold = oa_color_count_frac * front_camera.output_size.w * front_camera.output_size.h;
 
+    PRINT("Color_count: %d  threshold: %d state: %d \n", color_count, color_count_threshold, navigation_state);
+
     // update our safe confidence using color threshold
     if(color_count < color_count_threshold){
         obstacle_free_confidence++;
@@ -76,6 +81,7 @@ void mav_exercise_periodic(void)
             waypoint_move_here_2d(WP_HOME);
             autopilot_static_set_mode(AP_MODE_HOME);
             break;
+        case HOLD:
         default:
             break;
     }
