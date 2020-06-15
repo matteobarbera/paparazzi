@@ -9,16 +9,20 @@
 #include "autopilot_static.h"
 #include <stdio.h>
 
+#define NAV_C // needed to get the nav functions like Inside...
 #include "generated/flight_plan.h"
 
 #define PRINT(string,...) fprintf(stderr, "[mav_exercise->%s()] " string,__FUNCTION__ , ##__VA_ARGS__)
 
+uint8_t increase_nav_heading(float incrementDegrees);
 uint8_t moveWaypointForward(uint8_t waypoint, float distanceMeters);
 uint8_t moveWaypoint(uint8_t waypoint, struct EnuCoor_i *new_coor);
 
 enum navigation_state_t {
     SAFE,
-    OBSTACLE_FOUND
+    OBSTACLE_FOUND,
+    OUT_OF_BOUNDS,
+    HOLD
 };
 
 // define and initialise global variables
@@ -27,6 +31,10 @@ enum navigation_state_t navigation_state = SAFE;
 int32_t color_count = 0;               // orange color count from color filter for obstacle detection
 int16_t obstacle_free_confidence = 0;   // a measure of how certain we are that the way ahead is safe.
 float moveDistance = 2;                 // waypoint displacement [m]
+float oob_haeding_increment = 5.f;      // heading angle increment if out of bounds [deg]
+const int16_t max_trajectory_confidence = 5; // number of consecutive negative object detections to be sure we are obstacle free
+
+//float heading_increment_v = 60.f;
 
 // needed to receive output from a separate module running on a parallel process
 #ifndef ORANGE_AVOIDER_VISUAL_DETECTION_ID
@@ -67,9 +75,15 @@ void mav_exercise_periodic(void)
         obstacle_free_confidence -= 2;  // be more cautious with positive obstacle detections
     }
 
+    // bound obstacle_free_confidence
+    Bound(obstacle_free_confidence, 0, max_trajectory_confidence);
+
     switch (navigation_state) {
         case SAFE:
-            if (obstacle_free_confidence == 0) {
+            moveWaypointForward(WP_TRAJECTORY, 1.5f * moveDistance);
+            if (!InsideObstacleZone(WaypointX(WP_TRAJECTORY),WaypointY(WP_TRAJECTORY))) {
+                navigation_state = OUT_OF_BOUNDS;
+            } else if (obstacle_free_confidence == 0) {
                 navigation_state = OBSTACLE_FOUND;
             } else {
                 moveWaypointForward(WP_GOAL, moveDistance);
@@ -77,14 +91,46 @@ void mav_exercise_periodic(void)
             break;
         case OBSTACLE_FOUND:
             // TODO Change behavior
-            // Land as soon as an obstacle is found
-            waypoint_move_here_2d(WP_HOME);
-            autopilot_static_set_mode(AP_MODE_HOME);
+            // stop as soon as obstacle is found
+            waypoint_move_here_2d(WP_GOAL);
+            waypoint_move_here_2d(WP_TRAJECTORY);
+
+            navigation_state = HOLD;
+            break;
+        case OUT_OF_BOUNDS:
+            // stop
+            waypoint_move_here_2d(WP_GOAL);
+            waypoint_move_here_2d(WP_TRAJECTORY);
+
+            increase_nav_heading(oob_haeding_increment);
+            moveWaypointForward(WP_TRAJECTORY, 1.5f);
+
+            if (InsideObstacleZone(WaypointX(WP_TRAJECTORY),WaypointY(WP_TRAJECTORY))) {
+                // add offset to head back into arena
+                increase_nav_heading(oob_haeding_increment);
+                navigation_state = SAFE;
+            }
             break;
         case HOLD:
         default:
             break;
     }
+}
+
+/*
+ * Increases the NAV heading. Assumes heading is an INT32_ANGLE. It is bound in this function.
+ */
+uint8_t increase_nav_heading(float incrementDegrees)
+{
+    float new_heading = stateGetNedToBodyEulers_f()->psi + RadOfDeg(incrementDegrees);
+
+    // normalize heading to [-pi, pi]
+    FLOAT_ANGLE_NORMALIZE(new_heading);
+
+    // set heading
+    nav_heading = ANGLE_BFP_OF_REAL(new_heading);
+
+    return false;
 }
 
 /*
