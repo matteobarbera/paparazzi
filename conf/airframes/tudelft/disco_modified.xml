@@ -222,8 +222,8 @@
   <!-- ************************* ACTUATORS ************************* -->
   <servos>
     <servo name="S_THROTTLE_LEFT" no="0" min="1100" neutral="1500" max="1900"/>  <!-- TODO Test reverse -->
-    <servo name="S_ELEVON_LEFT" no="1" min="1000" neutral="1500" max="2000"/> <!-- max is upward deflection-->
-    <servo name="S_ELEVON_RIGHT" no="2" min="1960" neutral="1460" max="960"/> <!-- min is downward deflection-->
+    <servo name="S_ELEVON_LEFT" no="1" min="2000" neutral="1500" max="1000"/> <!-- max is upward deflection-->
+    <servo name="S_ELEVON_RIGHT" no="2" min="960" neutral="1460" max="1960"/> <!-- min is downward deflection-->
     <servo name="S_THROTTLE_RIGHT" no="3" min="1100" neutral="1500" max="1900"/>
   </servos>
 
@@ -298,8 +298,8 @@
     <let var="is_spinning" value="(@FS_LANDING > 4500 ? 1 : 0)"/>
     <set servo="S_THROTTLE_LEFT" value="($is_spinning ? $fs_throttle_left : $throttleleft)"/>
     <set servo="S_THROTTLE_RIGHT" value="($is_spinning ? $fs_throttle_right : $throttleright)"/>
-    <set servo="S_ELEVON_LEFT" value="($is_spinning ? $fs_elevon_left : $elevator + $aileron)"/>
-    <set servo="S_ELEVON_RIGHT" value="($is_spinning ? $fs_elevon_right : $elevator - $aileron)"/>
+    <set servo="S_ELEVON_LEFT" value="($is_spinning ? -$fs_elevon_left : $elevator + $aileron)"/>
+    <set servo="S_ELEVON_RIGHT" value="($is_spinning ? -$fs_elevon_right : $elevator - $aileron)"/>
   </command_laws>
 
   <!-- ************************ AUTO1 ***************************** -->

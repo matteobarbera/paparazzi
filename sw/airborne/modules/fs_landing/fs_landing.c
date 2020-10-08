@@ -78,7 +78,7 @@ void fs_landing_run()
 }
 
 bool pre_spin_actuator_values() {
-    float err = pre_spin_speed_setpoint - stateGetHorizontalSpeedNorm_f();
+    float err = stateGetHorizontalSpeedNorm_f() - pre_spin_speed_setpoint;
 #if FS_LANDING_DEBUG
     dbg_msg[0] = stateGetHorizontalSpeedNorm_f();
     dbg_msg[1] = err;
