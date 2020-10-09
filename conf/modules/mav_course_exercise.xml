@@ -6,24 +6,6 @@
     Exercise module for Autonomous Flight of MAV Course
     </description>
   </doc>
-  <!-- TODO Add GCS variable -->
-<!--  <settings>-->
-<!--    <dl_settings name="Mav Exercise">-->
-<!--      <dl_settings name="Heading Control">-->
-<!--        <dl_setting min="0" max="120" step="1" type="float" var="heading_increment_v" module="mav_course_exercise/mav_exercise"/>-->
-<!--      </dl_settings>-->
-<!--    </dl_settings>-->
-<!--  </settings>-->
-  
   <depends>cv_detect_color_object</depends>
   <!-- TODO Specify header, init, periodic, makefile sections  -->
-<!--  <header>-->
-<!--    <file name="mav_exercise.h"/>-->
-<!--  </header>-->
-<!--  <init fun="mav_exercise_init()"/>-->
-<!--  <periodic fun="mav_exercise_periodic()" freq="4"/>-->
-<!--  <makefile target="ap|nps">-->
-<!--    <file name="mav_exercise.c"/>-->
-<!--  </makefile>-->
-  <!-- ======================================================  -->
 </module>
