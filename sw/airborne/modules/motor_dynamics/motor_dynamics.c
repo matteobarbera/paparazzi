@@ -8,11 +8,23 @@
 #include "motor_dynamics.h"
 
 /*
- * Requires that at the end of the command laws the following lines be added:
- *  <call fun="motor_dynamics_set_actuator_values()"/>
- *  <set servo="YOUR_SERVO_0_NAME" value="motor_dynamics.values[0]"/>
- *  <set servo="YOUR_SERVO_1_NAME" value="motor_dynamics.values[1]"/>
- *  ... Repeat for all servo names, NOTE the change in array index !!!
+ * Requires that the following lines be added to your airframe file:
+ * With the other modules:
+ * <define name="SERVO_HZ" value="400"/>
+ * <module name="motor_dynamics"/>
+ *
+ * At the end of command laws:
+ * <command_laws>
+ *    ...
+ *    Already existing defines
+ *    ...
+ *
+ *    <call fun="motor_dynamics_set_actuator_values()"/>
+ *    <set servo="YOUR_SERVO_0_NAME" value="motor_dynamics.values[0]"/>
+ *    <set servo="YOUR_SERVO_1_NAME" value="motor_dynamics.values[1]"/>
+ *    ... Repeat for all servo names, NOTE the change in array index !!!
+ * </command_laws>
+ *
  */
 
 #define STEP_TIME 1  // Duration of step input in seconds
@@ -58,9 +70,11 @@ void motor_dynamics_periodic() {
     // Count step
     ctr++;
   }
+  // Set all servo values to 0
   for (int i = 0; i < ACTUATORS_NB, i++) {
     current_actuator_values.values[i] = 0;
   }
+  // If test still ongoing, set chosen servo values
   if (ctr < N_STEPS) {
     current_actuator_values.values[actuator_idx] = new_value;
   }
@@ -85,6 +99,10 @@ void step_max_handler(uint32_t value) {
 }
 
 void actuator_idx_handler(int8_t value) {
+  // Cannot change actuator mid test
+  if (start_test) {
+    return;
+  }
   // Ensure index is not larger than array
   // Do not start test if it is
   if (value < ACTUATORS_NB) {
