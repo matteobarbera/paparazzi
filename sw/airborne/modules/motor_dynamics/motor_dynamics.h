@@ -2,31 +2,29 @@
 // Created by matteo on 28/06/2021.
 //
 
-#ifndef PAPARAZZI_MOTOR_DYNAMICS_H
-#define PAPARAZZI_MOTOR_DYNAMICS_H
+#ifndef MOTOR_DYNAMICS_H
+#define MOTOR_DYNAMICS_H
 
 #include "generated/airframe.h"
 
 struct motor_dynamics_t {
-    int32_t values[ACTUATORS_NB];
+    int32_t commands[ACTUATORS_NB];
+    int8_t actuator_idx;
+    int32_t step_min;
+    int32_t step_max;
+    uint8_t start_test;
+    uint8_t mode;
 };
-extern motor_dynamics_t actuator_values;
+extern struct motor_dynamics_t motor_dynamics;
 
-// GCS variables
-extern int8_t actuator_idx;
-extern uint32_t step_min;
-extern uint32_t step_max;
-extern uint8_t start_test;
-
-extern void motor_dynamics_init();
-extern void motor_dynamics_periodic();
-
-extern void set_actuator_values();
+extern void motor_dynamics_init(void);
+extern void motor_dynamics_run(void);
 
 // GCS settings handlers
-extern void step_min_handler(uint32_t value);
-extern void step_max_handler(uint32_t value);
-extern void actuator_idx_handler(uint8_t value);
-extern void start_test_handler(uint8_t value);
+extern void motor_dynamics_step_min_handler(int32_t value);
+extern void motor_dynamics_step_max_handler(int32_t value);
+extern void motor_dynamics_actuator_idx_handler(int8_t value);
+extern void motor_dynamics_start_test_handler(uint8_t value);
+extern void motor_dynamics_mode_select_handler(uint8_t value);
 
-#endif //PAPARAZZI_MOTOR_DYNAMICS_H
+#endif // MOTOR_DYNAMICS_H

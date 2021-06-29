@@ -4,12 +4,16 @@
   <doc>
     <description>Motor dynamics identification</description>
   </doc>
-  <settings>
-    <dl_settings name="Motor Dynamics">
-      <dl_setting var="actuator_idx" min="0" max="50" step="1" shortname="Act IDX" type="int8_t" handler="actuator_idx_handler"/>
-      <dl_setting var="step_min" min="0" max="9600" step="1" shortname="Step Min" type="uint32_t" handler="step_min_handler"/>
-      <dl_setting var="step_max" min="0" max="9600" step="1" shortname="Step Max" type="uint32_t" handler="step_max_handler"/>
-      <dl_setting var="start_test" min="0" max="1" step="1" shortname="Start" type="uint8_t" handler="start_test_handler"/>
+
+  <settings target="ap">
+    <dl_settings>
+      <dl_settings name="Motor Dynamics">
+        <dl_setting var="motor_dynamics.actuator_idx" min="0" max="50" step="1" shortname="Act IDX" type="int8_t" module="motor_dynamics/motor_dynamics" handler="actuator_idx_handler"/>
+        <dl_setting var="motor_dynamics.step_min" min="0" max="9600" step="1" shortname="Step Min" type="int32_t" module="motor_dynamics/motor_dynamics" handler="step_min_handler"/>
+        <dl_setting var="motor_dynamics.step_max" min="0" max="9600" step="1" shortname="Step Max" type="int32_t" module="motor_dynamics/motor_dynamics" handler="step_max_handler"/>
+        <dl_setting var="motor_dynamics.start_test" min="0" max="1" step="1" shortname="Stop/Start" values="STOP|START" type="uint8_t" module="motor_dynamics/motor_dynamics" handler="start_test_handler"/>
+        <dl_setting var="motor_dynamics.mode" min="0" max="1" step="1" values="NOMINAL|BODE" shortname="Mode" type="uint8_t" module="motor_dynamics/motor_dynamics" handler="mode_select_handler"/>
+      </dl_settings>
     </dl_settings>
   </settings>
 

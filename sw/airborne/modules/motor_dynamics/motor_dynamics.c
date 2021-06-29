@@ -19,105 +19,168 @@
  *    Already existing defines
  *    ...
  *
- *    <call fun="motor_dynamics_set_actuator_values()"/>
- *    <set servo="YOUR_SERVO_0_NAME" value="motor_dynamics.values[0]"/>
- *    <set servo="YOUR_SERVO_1_NAME" value="motor_dynamics.values[1]"/>
+ *    <call fun="motor_dynamics_srun()"/>
+ *    <set servo="YOUR_SERVO_0_NAME" value="motor_dynamics.commands[0]"/>
+ *    <set servo="YOUR_SERVO_1_NAME" value="motor_dynamics.commands[1]"/>
  *    ... Repeat for all servo names, NOTE the change in array index !!!
  * </command_laws>
  *
  */
 
+// Start/Stop definitions
+#define STOP 0
+#define START 1
+
+// Mode definitions
+#define NOMINAL 0
+#define BODE 1
+
+// For nominal mode
 #define STEP_TIME 1  // Duration of step input in seconds
 #define N_STEPS 20  // Number of step changes
+// For bode mode
+#define DELTA_FREQUENCY 0.25  // Increase in chirp frequency between steps
+#define BODE_STEP_DURATION 2  // Duration of each chirp
+#define MAX_TEST_FREQUENCY 15  // Max frequency to test
 
-struct motor_dynamics_t motor_dynamics;
-struct motor_dynamics_t current_actuator_values;
+struct motor_dynamics_t motor_dynamics = {
+    .commands = {0},
+    .actuator_idx = -1,
+    .step_min = 1000,  // should not be 0 as it needs to make sound
+    .step_max = 9600,
+    .start_test = STOP,
+    .mode = NOMINAL
+};
 
 float start_t = 0;
+uint8_t ctr = 0;
+// For nominal mode
 uint32_t old_value = 0;
 uint32_t new_value = 0;
-uint8_t ctr = 0;
-
-// GCS variables
-int8_t actuator_idx = -1;
-uint32_t step_min = 1000;  // should not be 0 as it needs to make sound
-uint32_t step_max = 9600;
-uint8_t start_test = false;
+// For bode mode
+float chirp_f = 1 / BODE_STEP_DURATION;  // Initialize such that you see min/max in first step
+float bode_t = 0;
+float half_chirp_dur;  // Duration of step during chirp
 
 void motor_dynamics_init() {
-  for (int i = 0; i < ACTUATORS_NB, i++) {
-    motor_dynamics.values[i] = 0;
-    current_actuator_values.values[i] = 0;
-  }
-  old_value = step_min;
-  new_value = step_max;
+  half_chirp_dur = 1 / chirp_f * 0.5;
+  old_value = motor_dynamics.step_min;
+  new_value = motor_dynamics.step_max;
 }
 
-void motor_dynamics_periodic() {
-  // Manually set idx to correct value in GCS to start
-  if (actuator_idx == -1 || !start_test) {
+void motor_dynamics_run() {
+  // Actuator index must be manually set to correct value in GCS to start
+  // Start must be given by user in GCS
+  if (motor_dynamics.actuator_idx == -1 || motor_dynamics.start_test == STOP) {
     return;
   }
-  if (get_sys_time_float() - start_t > STEP_TIME) {
-    // Reset time
-    start_t = get_sys_time_float();
 
-    // Switch step value
-    uint32_t tmp = old_value;
-    old_value = new_value;
-    new_value = tmp;
+  if (motor_dynamics.mode == NOMINAL) {
+    if (get_sys_time_float() - start_t > STEP_TIME) {
+      // Reset time
+      start_t = get_sys_time_float();
 
-    // Count step
-    ctr++;
+      // Switch step value
+      uint32_t tmp = old_value;
+      old_value = new_value;
+      new_value = tmp;
+
+      // Count step
+      ctr++;
+      // If number of steps exceeded end test
+      if (ctr >= N_STEPS) {
+        motor_dynamics_start_test_handler(STOP);
+      }
+    }
+  } else if (motor_dynamics.mode == BODE) {
+    if (get_sys_time_float() - start_t > BODE_STEP_DURATION) {
+      // Reset time
+      start_t = get_sys_time_float();
+      bode_t = get_sys_time_float();
+      // Increase chirp frequency
+      chirp_f += DELTA_FREQUENCY;
+      half_chirp_dur = 1 / chirp_f;
+      // If exceeding max test frequency end test
+      if (chirp_f > MAX_TEST_FREQUENCY) {
+        motor_dynamics_start_test_handler(STOP);
+        return;
+      }
+    } else if (get_sys_time_float() - bode_t > half_chirp_dur) {
+      // Reset time
+      bode_t = get_sys_time_float();
+
+      // Switch step value
+      uint32_t tmp = old_value;
+      old_value = new_value;
+      new_value = tmp;
+    }
   }
   // Set all servo values to 0
-  for (int i = 0; i < ACTUATORS_NB, i++) {
-    current_actuator_values.values[i] = 0;
+  for (int i = 0; i < ACTUATORS_NB; i++) {
+    motor_dynamics.commands[i] = 0;
   }
-  // If test still ongoing, set chosen servo values
-  if (ctr < N_STEPS) {
-    current_actuator_values.values[actuator_idx] = new_value;
+  motor_dynamics.commands[motor_dynamics.actuator_idx] = new_value;
+}
+
+void motor_dynamics_step_min_handler(int32_t value) {
+  // Cannot change value mid test
+  if (motor_dynamics.start_test == START) {
+    return;
   }
+  motor_dynamics.step_min = value;
+  old_value = motor_dynamics.step_min;
+  new_value = motor_dynamics.step_max;
 }
 
-void set_actuator_values() {
-  for (int i = 0; i < ACTUATORS_NB, i++) {
-    motor_dynamics.values[i] = BoundAbs(current_actuator_values.values[i], MAX_PPRZ);
+void motor_dynamics_step_max_handler(int32_t value) {
+  // Cannot change value mid test
+  if (motor_dynamics.start_test == START) {
+    return;
   }
+  motor_dynamics.step_max = value;
+  old_value = motor_dynamics.step_min;
+  new_value = motor_dynamics.step_max;
 }
 
-void step_min_handler(uint32_t value) {
-  step_min = value;
-  old_value = step_min;
-  new_value = step_max;
-}
-
-void step_max_handler(uint32_t value) {
-  step_max = value;
-  old_value = step_min;
-  new_value = step_max;
-}
-
-void actuator_idx_handler(int8_t value) {
+void motor_dynamics_actuator_idx_handler(int8_t value) {
   // Cannot change actuator mid test
-  if (start_test) {
+  if (motor_dynamics.start_test == START) {
     return;
   }
   // Ensure index is not larger than array
   // Do not start test if it is
   if (value < ACTUATORS_NB) {
-    actuator_idx = value;
+    motor_dynamics.actuator_idx = value;
   } else {
-    actuator_idx = -1;
+    motor_dynamics.actuator_idx = -1;
   }
 }
 
-void start_test_handler(uint8_t value) {
-  start_test = value;
-  // If stop, reset the test
-  if (value == 0) {
-    ctr = 0;
-    start_t = 0;
+void motor_dynamics_start_test_handler(uint8_t value) {
+  // Cannot set start_test to true if actuator index hasn't been set
+  if (motor_dynamics.actuator_idx == -1) {
+    return;
   }
+  // If stop, reset the test
+  if (value == STOP) {
+    ctr = 0;
+    chirp_f = DELTA_FREQUENCY;
+    half_chirp_dur = 1 / chirp_f * 0.5;
+    motor_dynamics.start_test = STOP;
+  }
+  // If not already started, start timer
+  else if (value == START && motor_dynamics.start_test == STOP) {
+    start_t = get_sys_time_float();
+    bode_t = get_sys_time_float();
+    motor_dynamics.start_test = START;
+  }
+}
+
+void motor_dynamics_mode_select_handler(uint8_t value) {
+  // Cannot change mode mid test
+  if (motor_dynamics.start_test == START) {
+    return;
+  }
+  motor_dynamics.mode = value;
 }
 
